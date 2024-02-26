@@ -199,7 +199,8 @@ void createSparkSpendTransaction(
         const uint256& txHashSig,
         CAmount &fee,
         std::vector<uint8_t>& serializedSpend,
-        std::vector<std::vector<unsigned char>>& outputScripts) {
+        std::vector<std::vector<unsigned char>>& outputScripts,
+        std::vector<CSparkMintMeta>& spentCoinsOut) {
 
     if (recipients.empty() && privateRecipients.empty()) {
         throw std::runtime_error("Either recipients or newMints has to be nonempty.");
@@ -337,10 +338,12 @@ void createSparkSpendTransaction(
     for (auto& coin : estimated.second) {
         uint64_t groupId = coin.nId;
         if (cover_set_data.count(groupId) == 0) {
-            if (!(cover_set_data_all.count(groupId) > 0 && idAndBlockHashes.count(groupId) > 0 ))
+            if (!(cover_set_data_all.count(groupId) > 0 && idAndBlockHashes_all.count(groupId) > 0 ))
                 throw std::runtime_error("No such coin in set in input data");
             cover_set_data[groupId] = cover_set_data_all.at(groupId);
-            idAndBlockHashes[groupId] = idAndBlockHashes.at(groupId);
+            idAndBlockHashes[groupId] = idAndBlockHashes_all.at(groupId);
+            cover_set_data[groupId].cover_set_representation.insert(cover_set_data[groupId].cover_set_representation.end(), sig.begin(), sig.end());
+
         }
 
         spark::InputCoinData inputCoinData;
@@ -383,6 +386,7 @@ void createSparkSpendTransaction(
         outputScripts.emplace_back(script);
     }
 
+        spentCoinsOut = estimated.second;
 }
 
 spark::Address getAddress(const spark::IncomingViewKey& incomingViewKey, const uint64_t diversifier)
@@ -500,6 +504,7 @@ CSparkMintMeta getMetadata(const spark::Coin& coin, const spark::IncomingViewKey
     meta.i = identifiedCoinData.i;
     meta.k = identifiedCoinData.k;
     meta.serial_context = {};
+    meta.coin = coin;
 
     return meta;
 }
